@@ -31,6 +31,6 @@ func (tweet *Tweet) Save() (int64, error) {
 		log.Println(err)
 		return -1, err
 	}
-	log.Print("Row inserted!")
+	log.Print("Tweet inserted!")
 	return id, nil
 }

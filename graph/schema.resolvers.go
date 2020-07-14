@@ -6,10 +6,13 @@ package graph
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/ohmpatel1997/twitter-graphql/graph/generated"
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
 	"github.com/ohmpatel1997/twitter-graphql/internal/tweets"
+	"github.com/ohmpatel1997/twitter-graphql/internal/users"
+	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"time"
 )
@@ -40,7 +43,44 @@ func (r *mutationResolver) CreateTweet(ctx context.Context, input model.NewTweet
 }
 
 func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (*model.User, error) {
-	panic(fmt.Errorf("not implemented"))
+	var user users.User
+	user.FirstName = input.FirstName
+
+	if len(*input.LastName) > 0 {
+		user.LastName = *input.LastName
+	}
+	user.Username = input.Username
+	hashedPass, err := HashPassword(input.Password)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	user.Password = hashedPass
+	user.Email = input.Email
+	userID, err := user.Save()
+
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	user.ID = int(userID)
+
+	return &model.User{
+		UserID:    strconv.FormatInt(int64(user.ID), 10),
+		FirstName: user.FirstName,
+		LastName:  &user.LastName,
+		Email:     user.Email,
+		Username:  user.Username,
+		Deleted:   user.Deleted,
+	}, nil
+
+}
+
+//HashPassword hashes given password
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
 }
 
 func (r *mutationResolver) Login(ctx context.Context, input model.Login) (bool, error) {
