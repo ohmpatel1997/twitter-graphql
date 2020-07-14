@@ -107,11 +107,37 @@ func (r *mutationResolver) Login(ctx context.Context, input model.Login) (bool, 
 }
 
 func (r *mutationResolver) CreateRelationship(ctx context.Context, input model.Relationship) (bool, error) {
-	panic(fmt.Errorf("not implemented"))
+	var user users.User
+	var err error
+	user.ID, err = strconv.Atoi(input.UserID)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+	FollowerID, err := strconv.Atoi(input.FollowerID)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+	return user.AddFollower(ctx, FollowerID)
 }
 
 func (r *mutationResolver) RemoveRelationship(ctx context.Context, intput model.Relationship) (bool, error) {
-	panic(fmt.Errorf("not implemented"))
+	var user users.User
+	var err error
+
+	user.ID, err = strconv.Atoi(intput.UserID)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	FollowerID, err := strconv.Atoi(intput.FollowerID)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+	return user.RemoveFollower(ctx, FollowerID)
 }
 
 func (r *queryResolver) Tweets(ctx context.Context, tweetID *string, userID *string, username *string) ([]*model.Tweet, error) {

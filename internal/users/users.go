@@ -3,6 +3,8 @@ package users
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
 	database "github.com/ohmpatel1997/twitter-graphql/internal/pkg/db/mysql"
@@ -95,4 +97,101 @@ func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, err
 		tweets = append(tweets, &tweet)
 	}
 	return tweets, nil
+}
+
+func (user *User) AddFollower(ctx context.Context, followerID int) (bool, error) {
+	statement, err := database.Db.Prepare("select user_id, follower_id, active from follower where user_id = ? and follower_id = ?")
+
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	res := statement.QueryRow(user.ID, followerID)
+
+	var follower model.Relationship
+
+	err = res.Scan(&follower.UserID, &follower.FollowerID, &follower.Active)
+
+	if err != nil && err != sql.ErrNoRows { // proceed if no rows found
+		log.Println(err)
+		return false, err
+	}
+
+	if follower.Active != nil && *follower.Active { // return if user already followes
+		log.Println("Relationship Already Exist")
+		err := errors.New("User Already follows")
+		return false, err
+	}
+
+	if follower.Active != nil && !*follower.Active { // update the active flag
+		statement, err = database.Db.Prepare("update follower set active = true where user_id = ? and follower_id = ?")
+		if err != nil {
+			log.Println(err)
+			return false, err
+		}
+		_, err := statement.Exec(user.ID, followerID)
+
+		if err != nil {
+			log.Println(err)
+			return false, err
+		}
+
+		fmt.Println("Succesfully added relationship")
+		return true, nil
+	}
+
+	//insert the new relationship
+	statement, err = database.Db.Prepare("insert into follower(user_id,follower_id) values(?,?)")
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	_, err = statement.Exec(user.ID, followerID)
+
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	fmt.Println("Succesfully added relationship")
+	return true, nil
+}
+
+func (user *User) RemoveFollower(ctx context.Context, followerID int) (bool, error) {
+	statement, err := database.Db.Prepare("update follower set active = false where user_id = ? and follower_id = ?")
+
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	res, err := statement.Exec(user.ID, followerID)
+
+	if err != nil && err != sql.ErrNoRows {
+		log.Println(err)
+		return false, err
+	}
+
+	count, err := res.RowsAffected()
+
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	if count == 0 {
+		fmt.Println("No relationship exist")
+		err := errors.New("No relationship exist")
+		return false, err
+	}
+
+	lastInsertID, err := res.LastInsertId()
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+	log.Println("Succefully removed the relationship with ID", lastInsertID)
+	return true, nil
 }
