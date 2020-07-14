@@ -53,7 +53,7 @@ input Login {
 type Mutation {
   createTweet(input: NewTweet!): Tweet!
   createUser(input: NewUser!): User!
-  login(input: Login!): Boolean!
+  login(input: Login!): [Tweet!]
   createRelationship(input: Relationship!): Boolean!
   removeRelationship(intput: Relationship!):Boolean!
 }

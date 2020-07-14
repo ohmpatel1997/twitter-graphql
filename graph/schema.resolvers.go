@@ -84,7 +84,28 @@ func HashPassword(password string) (string, error) {
 }
 
 func (r *mutationResolver) Login(ctx context.Context, input model.Login) (bool, error) {
-	panic(fmt.Errorf("not implemented"))
+	var user users.User
+	user.Username = *input.Username
+	user.Email = *input.Email
+	user.Password = input.Password
+	correct, err := user.Authenticate()
+
+	if !correct {
+		invalidUser := &users.InvalidUsernameOrPasswordError{
+			UserName: user.Username,
+			Email:    user.Email,
+		}
+		log.Println(invalidUser.Error())
+		return false, invalidUser
+	}
+
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	return true, nil
+
 }
 
 func (r *mutationResolver) CreateRelationship(ctx context.Context, input model.Relationship) (bool, error) {

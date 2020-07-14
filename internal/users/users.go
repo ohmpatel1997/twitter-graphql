@@ -1,7 +1,12 @@
 package users
 
 import (
+	"context"
+	"database/sql"
+
+	"github.com/ohmpatel1997/twitter-graphql/graph/model"
 	database "github.com/ohmpatel1997/twitter-graphql/internal/pkg/db/mysql"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 )
 
@@ -35,4 +40,59 @@ func (user *User) Save() (int64, error) {
 	}
 	log.Print("User inserted!")
 	return id, nil
+}
+
+func (user *User) Authenticate() (bool, error) {
+	statement, err := database.Db.Prepare("select password from user WHERE user_name = ? OR email = ?")
+
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+	row := statement.QueryRow(user.Username, user.Email)
+
+	var hashedPassword string
+	err = row.Scan(&hashedPassword)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		log.Println(err)
+		return false, err
+	}
+
+	return CheckPasswordHash(user.Password, hashedPassword), nil
+}
+
+//CheckPassword hash compares raw password with it's hashed values
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]model.Tweet, error) {
+	statement, err := database.Db.Prepare("select * from tweet WHERE user_name = ? && email = ?")
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	rows, err := statement.QueryContext(ctx, user.Username, user.Email)
+
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	hasNext := rows.Next()
+	var tweets []model.Tweet
+	for ; hasNext; hasNext = rows.Next() {
+		var tweet model.Tweet
+		if err := rows.Scan(&tweet); err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		tweets = append(tweets, tweet)
+	}
+	return tweets, nil
 }
