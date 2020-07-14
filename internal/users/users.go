@@ -71,13 +71,13 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]model.Tweet, error) {
-	statement, err := database.Db.Prepare("select * from tweet WHERE user_name = ? && email = ?")
+func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, error) {
+	statement, err := database.Db.Prepare("select t.t_id, t.u_id, t.content from tweet t INNER JOIN user u ON t.u_id = u.u_id WHERE u.user_name = ? or u.u_id = ?")
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-	rows, err := statement.QueryContext(ctx, user.Username, user.Email)
+	rows, err := statement.QueryContext(ctx, user.Username, user.ID)
 
 	if err != nil {
 		log.Println(err)
@@ -85,14 +85,14 @@ func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]model.Tweet, erro
 	}
 
 	hasNext := rows.Next()
-	var tweets []model.Tweet
+	var tweets []*model.Tweet
 	for ; hasNext; hasNext = rows.Next() {
-		var tweet model.Tweet
-		if err := rows.Scan(&tweet); err != nil {
+		tweet := model.Tweet{}
+		if err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Content); err != nil {
 			log.Println(err)
 			return nil, err
 		}
-		tweets = append(tweets, tweet)
+		tweets = append(tweets, &tweet)
 	}
 	return tweets, nil
 }

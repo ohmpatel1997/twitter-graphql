@@ -12,7 +12,7 @@ import (
 var Db *sql.DB
 
 func InitDB() {
-	db, err := sql.Open("mysql", "root:root12345@tcp/twitter")
+	db, err := sql.Open("mysql", "root:root12345@tcp/twitter?parseTime=true")
 	if err != nil {
 		log.Panic(err)
 	}

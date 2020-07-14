@@ -7,14 +7,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/ohmpatel1997/twitter-graphql/graph/generated"
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
 	"github.com/ohmpatel1997/twitter-graphql/internal/tweets"
 	"github.com/ohmpatel1997/twitter-graphql/internal/users"
 	"golang.org/x/crypto/bcrypt"
-	"strconv"
-	"time"
 )
 
 func (r *mutationResolver) CreateTweet(ctx context.Context, input model.NewTweet) (*model.Tweet, error) {
@@ -74,10 +74,8 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 		Username:  user.Username,
 		Deleted:   user.Deleted,
 	}, nil
-
 }
 
-//HashPassword hashes given password
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
@@ -105,7 +103,6 @@ func (r *mutationResolver) Login(ctx context.Context, input model.Login) (bool, 
 	}
 
 	return true, nil
-
 }
 
 func (r *mutationResolver) CreateRelationship(ctx context.Context, input model.Relationship) (bool, error) {
@@ -116,11 +113,39 @@ func (r *mutationResolver) RemoveRelationship(ctx context.Context, intput model.
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *queryResolver) Tweets(ctx context.Context) ([]*model.Tweet, error) {
-	panic(fmt.Errorf("not implemented"))
+func (r *queryResolver) Tweets(ctx context.Context, tweetID *string, userID *string, username *string) ([]*model.Tweet, error) {
+
+	//querying based on userId or username
+	if tweetID == nil && (username != nil || userID != nil) {
+
+		user := users.User{}
+
+		if username != nil {
+			user.Username = *username
+		}
+
+		if userID != nil {
+			if intID, err := strconv.Atoi(*userID); err == nil {
+				user.ID = intID
+			}
+		}
+
+		return user.FetchAllTweetsOfUser(ctx)
+	}
+
+	// fetch tweet using tweet_id
+	tweet := tweets.Tweet{}
+	if intID, err := strconv.Atoi(*tweetID); err == nil {
+		tweet.TweetID = intID
+	}
+	return tweet.FetchTweet(ctx)
 }
 
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *queryResolver) Feed(ctx context.Context, username string) ([]*model.Tweet, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 

@@ -52,7 +52,8 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Tweets func(childComplexity int) int
+		Feed   func(childComplexity int, username string) int
+		Tweets func(childComplexity int, tweetID *string, userID *string, username *string) int
 		Users  func(childComplexity int) int
 	}
 
@@ -81,8 +82,9 @@ type MutationResolver interface {
 	RemoveRelationship(ctx context.Context, intput model.Relationship) (bool, error)
 }
 type QueryResolver interface {
-	Tweets(ctx context.Context) ([]*model.Tweet, error)
+	Tweets(ctx context.Context, tweetID *string, userID *string, username *string) ([]*model.Tweet, error)
 	Users(ctx context.Context) ([]*model.User, error)
+	Feed(ctx context.Context, username string) ([]*model.Tweet, error)
 }
 
 type executableSchema struct {
@@ -160,12 +162,29 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveRelationship(childComplexity, args["intput"].(model.Relationship)), true
 
+	case "Query.feed":
+		if e.complexity.Query.Feed == nil {
+			break
+		}
+
+		args, err := ec.field_Query_feed_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Feed(childComplexity, args["username"].(string)), true
+
 	case "Query.tweets":
 		if e.complexity.Query.Tweets == nil {
 			break
 		}
 
-		return e.complexity.Query.Tweets(childComplexity), true
+		args, err := ec.field_Query_tweets_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Tweets(childComplexity, args["tweet_id"].(*string), args["user_id"].(*string), args["username"].(*string)), true
 
 	case "Query.users":
 		if e.complexity.Query.Users == nil {
@@ -331,8 +350,9 @@ type User {
 }
 
 type Query {
-  tweets: [Tweet!]
+  tweets(tweet_id: ID, user_id: ID, username: String): [Tweet!]
   users: [User!]
+  feed(username: String!): [Tweet!]
 }
 
 input NewTweet {
@@ -455,6 +475,50 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_feed_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["username"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["username"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_tweets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["tweet_id"]; ok {
+		arg0, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tweet_id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["user_id"]; ok {
+		arg1, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["user_id"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["username"]; ok {
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["username"] = arg2
 	return args, nil
 }
 
@@ -714,9 +778,16 @@ func (ec *executionContext) _Query_tweets(ctx context.Context, field graphql.Col
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_tweets_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Tweets(rctx)
+		return ec.resolvers.Query().Tweets(rctx, args["tweet_id"].(*string), args["user_id"].(*string), args["username"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -759,6 +830,44 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	res := resTmp.([]*model.User)
 	fc.Result = res
 	return ec.marshalOUser2ᚕᚖgithubᚗcomᚋohmpatel1997ᚋtwitterᚑgraphqlᚋgraphᚋmodelᚐUserᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_feed(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_feed_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Feed(rctx, args["username"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Tweet)
+	fc.Result = res
+	return ec.marshalOTweet2ᚕᚖgithubᚗcomᚋohmpatel1997ᚋtwitterᚑgraphqlᚋgraphᚋmodelᚐTweetᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2444,6 +2553,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_users(ctx, field)
 				return res
 			})
+		case "feed":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_feed(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -3142,6 +3262,29 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalOID2string(ctx context.Context, v interface{}) (string, error) {
+	return graphql.UnmarshalID(v)
+}
+
+func (ec *executionContext) marshalOID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	return graphql.MarshalID(v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOID2string(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec.marshalOID2string(ctx, sel, *v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
