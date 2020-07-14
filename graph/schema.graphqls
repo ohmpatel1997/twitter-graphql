@@ -2,27 +2,58 @@
 #
 # https://gqlgen.com/getting-started/
 
-type Todo {
-  id: ID!
-  text: String!
-  done: Boolean!
-  user: User!
+scalar Time
+
+type Tweet {
+  tweet_id: ID!
+  user_id: ID!
+  created_on: Time!
+  content: String!
 }
 
 type User {
-  id: ID!
-  name: String!
+  user_id: ID!
+  first_name: String!
+  last_name: String
+  email: String!
+  username: String!
+  deleted: Boolean!
 }
 
 type Query {
-  todos: [Todo!]!
+  tweets: [Tweet!]
+  users: [User!]
 }
 
-input NewTodo {
-  text: String!
-  userId: String!
+input NewTweet {
+  user_id: ID!
+  content: String!
+}
+
+input NewUser {
+  first_name: String!
+  last_name: String
+  email: String!
+  username: String!
+  password: String!
+}
+
+input Relationship {
+  user_id: ID!
+  follower_id: ID!
+  active: Boolean
+}
+
+input Login {
+  email: String
+  username: String
+  password: String!
 }
 
 type Mutation {
-  createTodo(input: NewTodo!): Todo!
+  createTweet(input: NewTweet!): Tweet!
+  createUser(input: NewUser!): User!
+  login(input: Login!): Boolean!
+  createRelationship(input: Relationship!): Boolean!
+  removeRelationship(intput: Relationship!):Boolean!
 }
