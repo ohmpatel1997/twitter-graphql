@@ -9,10 +9,34 @@ import (
 
 	"github.com/ohmpatel1997/twitter-graphql/graph/generated"
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
+	"github.com/ohmpatel1997/twitter-graphql/internal/tweets"
+	"strconv"
+	"time"
 )
 
 func (r *mutationResolver) CreateTweet(ctx context.Context, input model.NewTweet) (*model.Tweet, error) {
-	panic(fmt.Errorf("not implemented"))
+	var tweet tweets.Tweet
+	userIntID, err := strconv.Atoi(input.UserID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tweet.UserID = userIntID
+	tweet.Content = input.Content
+	tweet.CreatedOn = time.Now()
+	ID, err := tweet.Save()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Tweet{
+		TweetID:   strconv.FormatInt(ID, 10),
+		CreatedOn: tweet.CreatedOn,
+		UserID:    strconv.FormatInt(int64(tweet.UserID), 10),
+		Content:   tweet.Content,
+	}, nil
 }
 
 func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (*model.User, error) {
