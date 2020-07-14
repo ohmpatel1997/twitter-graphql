@@ -72,7 +72,7 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, error) {
-	statement, err := database.Db.Prepare("select t.t_id, t.u_id, t.content from tweet t INNER JOIN user u ON t.u_id = u.u_id WHERE u.user_name = ? or u.u_id = ?")
+	statement, err := database.Db.Prepare("select t.t_id, t.u_id, t.created_on, t.content from tweet t INNER JOIN user u ON t.u_id = u.u_id WHERE u.user_name = ? or u.u_id = ?")
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -88,7 +88,7 @@ func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, err
 	var tweets []*model.Tweet
 	for ; hasNext; hasNext = rows.Next() {
 		tweet := model.Tweet{}
-		if err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Content); err != nil {
+		if err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.CreatedOn, &tweet.Content); err != nil {
 			log.Println(err)
 			return nil, err
 		}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/ohmpatel1997/twitter-graphql/graph/generated"
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
+	database "github.com/ohmpatel1997/twitter-graphql/internal/pkg/db/mysql"
 	"github.com/ohmpatel1997/twitter-graphql/internal/tweets"
 	"github.com/ohmpatel1997/twitter-graphql/internal/users"
 	"golang.org/x/crypto/bcrypt"
@@ -142,7 +143,28 @@ func (r *queryResolver) Tweets(ctx context.Context, tweetID *string, userID *str
 }
 
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
-	panic(fmt.Errorf("not implemented"))
+	statement, err := database.Db.Prepare("select u_id,f_name,l_name,user_name,email from user where deleted = false")
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	rows, err := statement.QueryContext(ctx)
+
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	hasNext := rows.Next()
+	var users []*model.User
+	for ; hasNext; hasNext = rows.Next() {
+		user := model.User{}
+		if err := rows.Scan(&user.UserID, &user.FirstName, &user.LastName, &user.Username, &user.Email); err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+	return users, nil
 }
 
 func (r *queryResolver) Feed(ctx context.Context, username string) ([]*model.Tweet, error) {
