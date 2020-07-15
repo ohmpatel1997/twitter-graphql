@@ -12,13 +12,15 @@ import (
 var Db *sql.DB
 
 func InitDB() {
-	db, err := sql.Open("mysql", "root:root12345@tcp/twitter?parseTime=true")
+	db, err := sql.Open("mysql", "root:root12345@tcp(docker.for.mac.localhost)/twitter?parseTime=true")
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
+		return
 	}
 
 	if err = db.Ping(); err != nil {
-		log.Panic(err)
+		log.Println(err)
+		return
 	}
 	Db = db
 }

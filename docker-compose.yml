@@ -1,0 +1,26 @@
+version: "3"
+services:
+      server:
+            container_name: Go-server
+            build: .
+            ports: ['8080:8080']
+            volumes: ['.:/usr/src/app']
+            restart: always
+            links:
+              - database
+
+      database:
+            container_name: database
+            image: mysql:5.7
+            restart: always
+            environment:
+                  MYSQL_DATABASE: twitter
+                  MYSQL_USER: root
+                  MYSQL_PASSWORD: root12345
+                  MYSQL_ROOT_PASSWORD: root12345
+            ports:
+                  - '3306:3306'
+            expose:
+                  - '3306'
+            volumes:
+                  - /usr/local/mysql/bin/mysql
