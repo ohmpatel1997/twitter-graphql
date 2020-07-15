@@ -15,7 +15,7 @@ services:
             restart: always
             environment:
                   MYSQL_DATABASE: twitter
-                  MYSQL_USER: root
+                  MYSQL_USER: new-user
                   MYSQL_PASSWORD: root12345
                   MYSQL_ROOT_PASSWORD: root12345
             ports:

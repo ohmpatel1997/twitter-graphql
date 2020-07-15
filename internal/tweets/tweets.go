@@ -23,6 +23,7 @@ func (tweet *Tweet) Save() (int64, error) {
 		return -1, err
 	}
 
+	defer statement.Close()
 	res, err := statement.Exec(tweet.UserID, tweet.Content, tweet.CreatedOn)
 	if err != nil {
 		log.Println(err)
@@ -44,6 +45,8 @@ func (tweet *Tweet) FetchTweet(ctx context.Context) ([]*model.Tweet, error) {
 		log.Println(err)
 		return nil, err
 	}
+
+	defer statement.Close()
 	rows, err := statement.QueryContext(ctx, tweet.TweetID)
 
 	if err != nil {

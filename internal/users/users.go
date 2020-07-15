@@ -28,8 +28,9 @@ func (user *User) Save() (int64, error) {
 		log.Println(err)
 		return -1, err
 	}
-
+	defer statement.Close()
 	res, err := statement.Exec(user.FirstName, user.LastName, user.Email, user.Password, user.Username)
+
 	if err != nil {
 		log.Println(err)
 		return -1, err
@@ -51,6 +52,8 @@ func (user *User) Authenticate() (bool, error) {
 		log.Println(err)
 		return false, err
 	}
+
+	defer statement.Close()
 	row := statement.QueryRow(user.Username, user.Email)
 
 	var hashedPassword string
@@ -79,6 +82,8 @@ func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, err
 		log.Println(err)
 		return nil, err
 	}
+
+	statement.Close()
 	rows, err := statement.QueryContext(ctx, user.Username, user.ID)
 
 	if err != nil {
@@ -107,6 +112,8 @@ func (user *User) AddFollower(ctx context.Context, followerID int) (bool, error)
 		return false, err
 	}
 
+	defer statement.Close()
+
 	res := statement.QueryRow(user.ID, followerID)
 
 	var follower model.Relationship
@@ -130,6 +137,8 @@ func (user *User) AddFollower(ctx context.Context, followerID int) (bool, error)
 			log.Println(err)
 			return false, err
 		}
+
+		defer statement.Close()
 		_, err := statement.Exec(user.ID, followerID)
 
 		if err != nil {
@@ -148,6 +157,7 @@ func (user *User) AddFollower(ctx context.Context, followerID int) (bool, error)
 		return false, err
 	}
 
+	defer statement.Close()
 	_, err = statement.Exec(user.ID, followerID)
 
 	if err != nil {
@@ -167,6 +177,7 @@ func (user *User) RemoveFollower(ctx context.Context, followerID int) (bool, err
 		return false, err
 	}
 
+	defer statement.Close()
 	res, err := statement.Exec(user.ID, followerID)
 
 	if err != nil && err != sql.ErrNoRows {
@@ -205,6 +216,8 @@ func (user *User) FetchFeed(ctx context.Context) ([]*model.Tweet, error) {
 		log.Println(err)
 		return nil, err
 	}
+
+	defer statement.Close()
 	rows, err := statement.QueryContext(ctx, user.ID, user.ID)
 
 	if err != nil {
