@@ -5,17 +5,16 @@ package graph
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strconv"
 	"time"
 
+	"github.com/ohmpatel1997/twitter-graphql/common"
 	"github.com/ohmpatel1997/twitter-graphql/graph/generated"
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
 	database "github.com/ohmpatel1997/twitter-graphql/internal/pkg/db/mysql"
 	"github.com/ohmpatel1997/twitter-graphql/internal/tweets"
 	"github.com/ohmpatel1997/twitter-graphql/internal/users"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func (r *mutationResolver) CreateTweet(ctx context.Context, input model.NewTweet) (*model.Tweet, error) {
@@ -51,7 +50,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 		user.LastName = *input.LastName
 	}
 	user.Username = input.Username
-	hashedPass, err := HashPassword(input.Password)
+	hashedPass, err := common.HashPassword(input.Password)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -75,11 +74,6 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 		Username:  user.Username,
 		Deleted:   user.Deleted,
 	}, nil
-}
-
-func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
 }
 
 func (r *mutationResolver) Login(ctx context.Context, input model.Login) (bool, error) {
@@ -141,7 +135,6 @@ func (r *mutationResolver) RemoveRelationship(ctx context.Context, intput model.
 }
 
 func (r *queryResolver) Tweets(ctx context.Context, tweetID *string, userID *string, username *string) ([]*model.Tweet, error) {
-
 	//querying based on userId or username
 	if tweetID == nil && (username != nil || userID != nil) {
 
@@ -193,8 +186,17 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	return users, nil
 }
 
-func (r *queryResolver) Feed(ctx context.Context, username string) ([]*model.Tweet, error) {
-	panic(fmt.Errorf("not implemented"))
+func (r *queryResolver) Feed(ctx context.Context, userID string) ([]*model.Tweet, error) {
+	var user users.User
+
+	intUserID, err := strconv.Atoi(userID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	user.ID = intUserID
+
+	return user.FetchFeed(ctx)
 }
 
 // Mutation returns generated.MutationResolver implementation.

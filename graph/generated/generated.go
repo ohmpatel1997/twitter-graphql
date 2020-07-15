@@ -52,7 +52,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Feed   func(childComplexity int, username string) int
+		Feed   func(childComplexity int, userID string) int
 		Tweets func(childComplexity int, tweetID *string, userID *string, username *string) int
 		Users  func(childComplexity int) int
 	}
@@ -84,7 +84,7 @@ type MutationResolver interface {
 type QueryResolver interface {
 	Tweets(ctx context.Context, tweetID *string, userID *string, username *string) ([]*model.Tweet, error)
 	Users(ctx context.Context) ([]*model.User, error)
-	Feed(ctx context.Context, username string) ([]*model.Tweet, error)
+	Feed(ctx context.Context, userID string) ([]*model.Tweet, error)
 }
 
 type executableSchema struct {
@@ -172,7 +172,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Feed(childComplexity, args["username"].(string)), true
+		return e.complexity.Query.Feed(childComplexity, args["user_id"].(string)), true
 
 	case "Query.tweets":
 		if e.complexity.Query.Tweets == nil {
@@ -352,7 +352,7 @@ type User {
 type Query {
   tweets(tweet_id: ID, user_id: ID, username: String): [Tweet!]
   users: [User!]
-  feed(username: String!): [Tweet!]
+  feed(user_id: ID!): [Tweet!]
 }
 
 input NewTweet {
@@ -482,13 +482,13 @@ func (ec *executionContext) field_Query_feed_args(ctx context.Context, rawArgs m
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["username"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	if tmp, ok := rawArgs["user_id"]; ok {
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["username"] = arg0
+	args["user_id"] = arg0
 	return args, nil
 }
 
@@ -856,7 +856,7 @@ func (ec *executionContext) _Query_feed(ctx context.Context, field graphql.Colle
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Feed(rctx, args["username"].(string))
+		return ec.resolvers.Query().Feed(rctx, args["user_id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

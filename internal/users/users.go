@@ -195,3 +195,32 @@ func (user *User) RemoveFollower(ctx context.Context, followerID int) (bool, err
 	log.Println("Succefully removed the relationship with ID", lastInsertID)
 	return true, nil
 }
+
+func (user *User) FetchFeed(ctx context.Context) ([]*model.Tweet, error) {
+	var tweets []*model.Tweet
+
+	//fetch all the tweets from its following along with its own tweets
+	statement, err := database.Db.Prepare("select t.t_id, t.u_id, t.created_on, t.content from tweet t LEFT JOIN follower f ON t.u_id = f.user_id where (f.active = true OR f.active is NULL) AND (f.follower_id = ? OR t.u_id = ?) ORDER BY t.created_on")
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	rows, err := statement.QueryContext(ctx, user.ID, user.ID)
+
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	hasNext := rows.Next()
+
+	for ; hasNext; hasNext = rows.Next() {
+		var tweet model.Tweet
+		if err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.CreatedOn, &tweet.Content); err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		tweets = append(tweets, &tweet)
+	}
+	return tweets, nil
+
+}

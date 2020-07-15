@@ -23,7 +23,7 @@ type User {
 type Query {
   tweets(tweet_id: ID, user_id: ID, username: String): [Tweet!]
   users: [User!]
-  feed(username: String!): [Tweet!]
+  feed(user_id: ID!): [Tweet!]
 }
 
 input NewTweet {
