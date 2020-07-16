@@ -13,7 +13,6 @@ type Login struct {
 }
 
 type NewTweet struct {
-	UserID  string `json:"user_id"`
 	Content string `json:"content"`
 }
 

@@ -52,7 +52,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Feed   func(childComplexity int, userID string) int
+		Feed   func(childComplexity int) int
 		Tweets func(childComplexity int, tweetID *string, userID *string, username *string) int
 		Users  func(childComplexity int) int
 	}
@@ -76,15 +76,15 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	CreateTweet(ctx context.Context, input model.NewTweet) (*model.Tweet, error)
-	CreateUser(ctx context.Context, input model.NewUser) (*model.User, error)
-	Login(ctx context.Context, input model.Login) (bool, error)
+	CreateUser(ctx context.Context, input model.NewUser) (string, error)
+	Login(ctx context.Context, input model.Login) (string, error)
 	CreateRelationship(ctx context.Context, input model.Relationship) (bool, error)
 	RemoveRelationship(ctx context.Context, intput model.Relationship) (bool, error)
 }
 type QueryResolver interface {
 	Tweets(ctx context.Context, tweetID *string, userID *string, username *string) ([]*model.Tweet, error)
 	Users(ctx context.Context) ([]*model.User, error)
-	Feed(ctx context.Context, userID string) ([]*model.Tweet, error)
+	Feed(ctx context.Context) ([]*model.Tweet, error)
 }
 
 type executableSchema struct {
@@ -167,12 +167,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_feed_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.Feed(childComplexity, args["user_id"].(string)), true
+		return e.complexity.Query.Feed(childComplexity), true
 
 	case "Query.tweets":
 		if e.complexity.Query.Tweets == nil {
@@ -352,11 +347,10 @@ type User {
 type Query {
   tweets(tweet_id: ID, user_id: ID, username: String): [Tweet!]
   users: [User!]
-  feed(user_id: ID!): [Tweet!]
+  feed: [Tweet!]
 }
 
 input NewTweet {
-  user_id: ID!
   content: String!
 }
 
@@ -382,8 +376,8 @@ input Login {
 
 type Mutation {
   createTweet(input: NewTweet!): Tweet!
-  createUser(input: NewUser!): User!
-  login(input: Login!): Boolean!
+  createUser(input: NewUser!): String!
+  login(input: Login!): String!
   createRelationship(input: Relationship!): Boolean!
   removeRelationship(intput: Relationship!):Boolean!
 }`, BuiltIn: false},
@@ -475,20 +469,6 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_feed_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["user_id"]; ok {
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["user_id"] = arg0
 	return args, nil
 }
 
@@ -635,9 +615,9 @@ func (ec *executionContext) _Mutation_createUser(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.User)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋohmpatel1997ᚋtwitterᚑgraphqlᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -676,9 +656,9 @@ func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_createRelationship(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -847,16 +827,9 @@ func (ec *executionContext) _Query_feed(ctx context.Context, field graphql.Colle
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_feed_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Feed(rctx, args["user_id"].(string))
+		return ec.resolvers.Query().Feed(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2367,12 +2340,6 @@ func (ec *executionContext) unmarshalInputNewTweet(ctx context.Context, obj inte
 
 	for k, v := range asMap {
 		switch k {
-		case "user_id":
-			var err error
-			it.UserID, err = ec.unmarshalNID2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		case "content":
 			var err error
 			it.Content, err = ec.unmarshalNString2string(ctx, v)

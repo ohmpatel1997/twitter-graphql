@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -12,20 +13,23 @@ import (
 	"github.com/ohmpatel1997/twitter-graphql/common"
 	"github.com/ohmpatel1997/twitter-graphql/graph/generated"
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
+	"github.com/ohmpatel1997/twitter-graphql/internal/auth"
 	database "github.com/ohmpatel1997/twitter-graphql/internal/pkg/db/mysql"
+	"github.com/ohmpatel1997/twitter-graphql/internal/pkg/jwt"
 	"github.com/ohmpatel1997/twitter-graphql/internal/tweets"
 	"github.com/ohmpatel1997/twitter-graphql/internal/users"
 )
 
 func (r *mutationResolver) CreateTweet(ctx context.Context, input model.NewTweet) (*model.Tweet, error) {
-	var tweet tweets.Tweet
-	userIntID, err := strconv.Atoi(input.UserID)
-
-	if err != nil {
-		return nil, err
+	user := auth.ForContext(ctx)
+	if user == nil {
+		log.Println("can not able to fetch user from context")
+		return nil, fmt.Errorf("Access denied")
 	}
 
-	tweet.UserID = userIntID
+	var tweet tweets.Tweet
+
+	tweet.UserID = user.ID //fetch tweet from current user
 	tweet.Content = input.Content
 	tweet.CreatedOn = time.Now()
 	ID, err := tweet.Save()
@@ -42,7 +46,7 @@ func (r *mutationResolver) CreateTweet(ctx context.Context, input model.NewTweet
 	}, nil
 }
 
-func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (*model.User, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (string, error) {
 	var user users.User
 	user.FirstName = input.FirstName
 
@@ -53,30 +57,27 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 	hashedPass, err := common.HashPassword(input.Password)
 	if err != nil {
 		log.Println(err)
-		return nil, err
+		return "", err
 	}
 	user.Password = hashedPass
 	user.Email = input.Email
-	userID, err := user.Save()
 
+	userID, err := user.Save() //first save the user, auth token is not mandatory on sign up
 	if err != nil {
 		log.Println(err)
-		return nil, err
+		return "", err
 	}
+	fmt.Println("Successfully user created with ID", userID)
 
-	user.ID = int(userID)
-
-	return &model.User{
-		UserID:    strconv.FormatInt(int64(user.ID), 10),
-		FirstName: user.FirstName,
-		LastName:  &user.LastName,
-		Email:     user.Email,
-		Username:  user.Username,
-		Deleted:   user.Deleted,
-	}, nil
+	token, err := jwt.GenerateToken(user.Email)
+	if err != nil {
+		log.Println(err)
+		return "", err
+	}
+	return token, nil
 }
 
-func (r *mutationResolver) Login(ctx context.Context, input model.Login) (bool, error) {
+func (r *mutationResolver) Login(ctx context.Context, input model.Login) (string, error) {
 	var user users.User
 	user.Username = *input.Username
 	user.Email = *input.Email
@@ -89,18 +90,28 @@ func (r *mutationResolver) Login(ctx context.Context, input model.Login) (bool, 
 			Email:    user.Email,
 		}
 		log.Println(invalidUser.Error())
-		return false, invalidUser
+		return "", invalidUser
 	}
 
 	if err != nil {
 		log.Println(err)
-		return false, err
+		return "", err
 	}
 
-	return true, nil
+	token, err := jwt.GenerateToken(user.Email)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func (r *mutationResolver) CreateRelationship(ctx context.Context, input model.Relationship) (bool, error) {
+	userFromContext := auth.ForContext(ctx)
+	if userFromContext == nil {
+		log.Println("can not able to fetch user from context")
+		return false, fmt.Errorf("Access denied")
+	}
+
 	var user users.User
 	var err error
 	user.ID, err = strconv.Atoi(input.UserID)
@@ -117,6 +128,12 @@ func (r *mutationResolver) CreateRelationship(ctx context.Context, input model.R
 }
 
 func (r *mutationResolver) RemoveRelationship(ctx context.Context, intput model.Relationship) (bool, error) {
+	userFromContext := auth.ForContext(ctx)
+	if userFromContext == nil {
+		log.Println("can not able to fetch user from context")
+		return false, fmt.Errorf("Access denied")
+	}
+
 	var user users.User
 	var err error
 
@@ -183,20 +200,23 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 		}
 		users = append(users, &user)
 	}
+
+	if len(users) == 0 {
+		log.Println("No users found")
+		return nil, fmt.Errorf("No users found")
+	}
+
 	return users, nil
 }
 
-func (r *queryResolver) Feed(ctx context.Context, userID string) ([]*model.Tweet, error) {
-	var user users.User
-
-	intUserID, err := strconv.Atoi(userID)
-	if err != nil {
-		log.Println(err)
-		return nil, err
+func (r *queryResolver) Feed(ctx context.Context) ([]*model.Tweet, error) {
+	userFromContext := auth.ForContext(ctx)
+	if userFromContext == nil {
+		log.Println("can not able to fetch user from context")
+		return nil, fmt.Errorf("Access denied")
 	}
-	user.ID = intUserID
 
-	return user.FetchFeed(ctx)
+	return userFromContext.FetchFeed(ctx)
 }
 
 // Mutation returns generated.MutationResolver implementation.

@@ -9,6 +9,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/ohmpatel1997/twitter-graphql/graph"
 	"github.com/ohmpatel1997/twitter-graphql/graph/generated"
+	"github.com/ohmpatel1997/twitter-graphql/internal/auth"
 	database "github.com/ohmpatel1997/twitter-graphql/internal/pkg/db/mysql"
 )
 
@@ -25,9 +26,12 @@ func main() {
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	http.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
+	http.HandleFunc("/query", auth.Middleware(srv))
+	http.Handle("/query/users", srv)
+	http.Handle("/mutation", srv)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+
 }

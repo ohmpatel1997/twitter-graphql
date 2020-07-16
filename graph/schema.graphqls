@@ -23,11 +23,10 @@ type User {
 type Query {
   tweets(tweet_id: ID, user_id: ID, username: String): [Tweet!]
   users: [User!]
-  feed(user_id: ID!): [Tweet!]
+  feed: [Tweet!]
 }
 
 input NewTweet {
-  user_id: ID!
   content: String!
 }
 
@@ -53,8 +52,8 @@ input Login {
 
 type Mutation {
   createTweet(input: NewTweet!): Tweet!
-  createUser(input: NewUser!): User!
-  login(input: Login!): Boolean!
+  createUser(input: NewUser!): String!
+  login(input: Login!): String!
   createRelationship(input: Relationship!): Boolean!
   removeRelationship(intput: Relationship!):Boolean!
 }

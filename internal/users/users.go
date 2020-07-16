@@ -3,12 +3,10 @@ package users
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-
+	"github.com/ohmpatel1997/twitter-graphql/common"
 	"github.com/ohmpatel1997/twitter-graphql/graph/model"
 	database "github.com/ohmpatel1997/twitter-graphql/internal/pkg/db/mysql"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 )
 
@@ -67,13 +65,7 @@ func (user *User) Authenticate() (bool, error) {
 		return false, err
 	}
 
-	return CheckPasswordHash(user.Password, hashedPassword), nil
-}
-
-//CheckPassword hash compares raw password with it's hashed values
-func CheckPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
+	return common.CheckPasswordHash(user.Password, hashedPassword), nil
 }
 
 func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, error) {
@@ -83,7 +75,7 @@ func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, err
 		return nil, err
 	}
 
-	statement.Close()
+	defer statement.Close()
 	rows, err := statement.QueryContext(ctx, user.Username, user.ID)
 
 	if err != nil {
@@ -101,6 +93,12 @@ func (user *User) FetchAllTweetsOfUser(ctx context.Context) ([]*model.Tweet, err
 		}
 		tweets = append(tweets, &tweet)
 	}
+
+	if len(tweets) == 0 {
+		log.Println("Could not able to find the tweets")
+		return nil, fmt.Errorf("No tweets available for the user")
+	}
+
 	return tweets, nil
 }
 
@@ -127,7 +125,7 @@ func (user *User) AddFollower(ctx context.Context, followerID int) (bool, error)
 
 	if follower.Active != nil && *follower.Active { // return if user already followes
 		log.Println("Relationship Already Exist")
-		err := errors.New("User Already follows")
+		err := fmt.Errorf("User Already follows")
 		return false, err
 	}
 
@@ -194,7 +192,7 @@ func (user *User) RemoveFollower(ctx context.Context, followerID int) (bool, err
 
 	if count == 0 {
 		fmt.Println("No relationship exist")
-		err := errors.New("No relationship exist")
+		err := fmt.Errorf("No relationship exist")
 		return false, err
 	}
 
@@ -234,6 +232,32 @@ func (user *User) FetchFeed(ctx context.Context) ([]*model.Tweet, error) {
 		}
 		tweets = append(tweets, &tweet)
 	}
+
+	if len(tweets) == 0 {
+		log.Println("No tweets are available for the user's feed: ", user.ID)
+		return nil, fmt.Errorf("No tweets are available for the user's feed: ")
+	}
 	return tweets, nil
 
+}
+
+func GetUserIdByEmail(email string) (int, error) {
+	statement, err := database.Db.Prepare("select u_id from user WHERE email = ?")
+	if err != nil {
+		log.Println(err)
+		return -1, err
+	}
+	defer statement.Close()
+	row := statement.QueryRow(email)
+
+	var ID int
+	err = row.Scan(&ID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Println(err)
+		return -1, err
+	} else if err == sql.ErrNoRows {
+		log.Println(err)
+		return -1, err
+	}
+	return ID, nil
 }
